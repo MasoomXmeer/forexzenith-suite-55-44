@@ -7,141 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { TraderProfileDialog } from './TraderProfileDialog';
+import { CopyAmountDialog } from './CopyAmountDialog';
 import { TrendingUp, TrendingDown, Users, Star, Search, Filter } from 'lucide-react';
+import { useCopyTrading } from '@/hooks/useCopyTrading';
 import { toast } from '@/hooks/use-toast';
 
-interface Trader {
-  id: string;
-  name: string;
-  avatar: string;
-  rank: number;
-  return1M: number;
-  return3M: number;
-  return1Y: number;
-  winRate: number;
-  followers: number;
-  copiers: number;
-  riskScore: number;
-  maxDrawdown: number;
-  totalTrades: number;
-  strategy: string;
-  isVerified: boolean;
-  isFollowing: boolean;
-  isCopying: boolean;
-}
-
-const mockTraders: Trader[] = [
-  {
-    id: '1',
-    name: 'Alex Thompson',
-    avatar: '/avatars/alex.jpg',
-    rank: 1,
-    return1M: 15.2,
-    return3M: 42.8,
-    return1Y: 156.3,
-    winRate: 78.5,
-    followers: 2340,
-    copiers: 580,
-    riskScore: 6.2,
-    maxDrawdown: -8.5,
-    totalTrades: 347,
-    strategy: 'Scalping & Momentum',
-    isVerified: true,
-    isFollowing: false,
-    isCopying: false,
-  },
-  {
-    id: '2',
-    name: 'Sarah Chen',
-    avatar: '/avatars/sarah.jpg',
-    rank: 2,
-    return1M: 12.7,
-    return3M: 38.4,
-    return1Y: 142.1,
-    winRate: 82.3,
-    followers: 1890,
-    copiers: 425,
-    riskScore: 4.8,
-    maxDrawdown: -6.2,
-    totalTrades: 256,
-    strategy: 'Swing Trading',
-    isVerified: true,
-    isFollowing: true,
-    isCopying: false,
-  },
-  {
-    id: '3',
-    name: 'Mike Rodriguez',
-    avatar: '/avatars/mike.jpg',
-    rank: 3,
-    return1M: 11.3,
-    return3M: 35.6,
-    return1Y: 128.9,
-    winRate: 75.8,
-    followers: 1567,
-    copiers: 312,
-    riskScore: 7.1,
-    maxDrawdown: -12.3,
-    totalTrades: 492,
-    strategy: 'News Trading',
-    isVerified: false,
-    isFollowing: false,
-    isCopying: true,
-  },
-  {
-    id: '4',
-    name: 'Emma Wilson',
-    avatar: '/avatars/emma.jpg',
-    rank: 4,
-    return1M: 9.8,
-    return3M: 31.2,
-    return1Y: 115.7,
-    winRate: 79.1,
-    followers: 1234,
-    copiers: 278,
-    riskScore: 5.5,
-    maxDrawdown: -9.1,
-    totalTrades: 189,
-    strategy: 'Technical Analysis',
-    isVerified: true,
-    isFollowing: false,
-    isCopying: false,
-  },
-];
-
 export const TraderLeaderboard: React.FC = () => {
-  const [traders, setTraders] = useState<Trader[]>(mockTraders);
-  const [sortBy, setSortBy] = useState('return1Y');
+  const { copyTraders, isLoading } = useCopyTrading();
+  const [sortBy, setSortBy] = useState('performance_return_1y');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTrader, setSelectedTrader] = useState<Trader | null>(null);
-
-  const handleFollow = (traderId: string) => {
-    setTraders(prev => prev.map(trader => 
-      trader.id === traderId 
-        ? { ...trader, isFollowing: !trader.isFollowing, followers: trader.isFollowing ? trader.followers - 1 : trader.followers + 1 }
-        : trader
-    ));
-    
-    const trader = traders.find(t => t.id === traderId);
-    toast({
-      title: trader?.isFollowing ? "Unfollowed" : "Following",
-      description: `You are now ${trader?.isFollowing ? 'not following' : 'following'} ${trader?.name}`,
-    });
-  };
-
-  const handleCopy = (traderId: string) => {
-    setTraders(prev => prev.map(trader => 
-      trader.id === traderId 
-        ? { ...trader, isCopying: !trader.isCopying, copiers: trader.isCopying ? trader.copiers - 1 : trader.copiers + 1 }
-        : trader
-    ));
-    
-    const trader = traders.find(t => t.id === traderId);
-    toast({
-      title: trader?.isCopying ? "Stopped Copying" : "Started Copying",
-      description: `Copy trading ${trader?.isCopying ? 'stopped' : 'started'} for ${trader?.name}`,
-    });
-  };
+  const [selectedTrader, setSelectedTrader] = useState<any>(null);
+  const [copyDialogTrader, setCopyDialogTrader] = useState<any>(null);
 
   const getRiskBadgeColor = (score: number) => {
     if (score <= 3) return 'bg-green-100 text-green-800';
@@ -155,10 +31,40 @@ export const TraderLeaderboard: React.FC = () => {
     return 'High';
   };
 
-  const filteredTraders = traders.filter(trader =>
-    trader.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    trader.strategy.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTraders = copyTraders.filter(trader =>
+    trader.trader_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (trader.trading_strategy && trader.trading_strategy.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const sortedTraders = [...filteredTraders].sort((a, b) => {
+    switch (sortBy) {
+      case 'performance_return_1y':
+        return b.performance_return_1y - a.performance_return_1y;
+      case 'performance_return_3m':
+        return b.performance_return_3m - a.performance_return_3m;
+      case 'performance_return_1m':
+        return b.performance_return_1m - a.performance_return_1m;
+      case 'win_rate':
+        return b.win_rate - a.win_rate;
+      case 'total_followers':
+        return b.total_followers - a.total_followers;
+      case 'risk_level':
+        return a.risk_level - b.risk_level;
+      default:
+        return 0;
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading copy traders...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -179,19 +85,19 @@ export const TraderLeaderboard: React.FC = () => {
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="return1Y">1Y Return</SelectItem>
-            <SelectItem value="return3M">3M Return</SelectItem>
-            <SelectItem value="return1M">1M Return</SelectItem>
-            <SelectItem value="winRate">Win Rate</SelectItem>
-            <SelectItem value="followers">Followers</SelectItem>
-            <SelectItem value="riskScore">Risk Score</SelectItem>
+            <SelectItem value="performance_return_1y">1Y Return</SelectItem>
+            <SelectItem value="performance_return_3m">3M Return</SelectItem>
+            <SelectItem value="performance_return_1m">1M Return</SelectItem>
+            <SelectItem value="win_rate">Win Rate</SelectItem>
+            <SelectItem value="total_followers">Followers</SelectItem>
+            <SelectItem value="risk_level">Risk Score</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
       {/* Traders Grid */}
       <div className="grid gap-4">
-        {filteredTraders.map((trader) => (
+        {sortedTraders.map((trader, index) => (
           <Card key={trader.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -199,32 +105,31 @@ export const TraderLeaderboard: React.FC = () => {
                 <div className="flex items-center gap-4 min-w-0 flex-1">
                   <div className="flex items-center gap-3">
                     <Badge variant="outline" className="text-sm">
-                      #{trader.rank}
+                      #{index + 1}
                     </Badge>
                     <Avatar className="h-12 w-12">
-                      <AvatarImage src={trader.avatar} alt={trader.name} />
-                      <AvatarFallback>{trader.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                      <AvatarFallback>{trader.trader_name.split(' ').map((n: string) => n[0]).join('')}</AvatarFallback>
                     </Avatar>
                   </div>
                   
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-lg">{trader.name}</h3>
-                      {trader.isVerified && (
+                      <h3 className="font-semibold text-lg">{trader.trader_name}</h3>
+                      {trader.is_verified && (
                         <Badge variant="secondary" className="text-xs">
                           <Star className="h-3 w-3 mr-1" />
                           Verified
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">{trader.strategy}</p>
+                    <p className="text-sm text-muted-foreground">{trader.trading_strategy}</p>
                     <div className="flex items-center gap-4 mt-1">
                       <span className="text-xs text-muted-foreground">
                         <Users className="h-3 w-3 inline mr-1" />
-                        {trader.followers.toLocaleString()} followers
+                        {trader.total_followers.toLocaleString()} followers
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {trader.copiers.toLocaleString()} copiers
+                        {trader.total_copiers.toLocaleString()} copiers
                       </span>
                     </div>
                   </div>
@@ -234,53 +139,42 @@ export const TraderLeaderboard: React.FC = () => {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground">1Y Return</div>
-                    <div className={`text-sm font-bold ${trader.return1Y >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {trader.return1Y >= 0 ? '+' : ''}{trader.return1Y.toFixed(1)}%
+                    <div className={`text-sm font-bold ${trader.performance_return_1y >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {trader.performance_return_1y >= 0 ? '+' : ''}{trader.performance_return_1y.toFixed(1)}%
                     </div>
                   </div>
                   
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground">Win Rate</div>
-                    <div className="text-sm font-bold">{trader.winRate.toFixed(1)}%</div>
+                    <div className="text-sm font-bold">{trader.win_rate.toFixed(1)}%</div>
                   </div>
                   
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground">Risk Score</div>
-                    <Badge className={`text-xs ${getRiskBadgeColor(trader.riskScore)}`}>
-                      {getRiskLabel(trader.riskScore)}
+                    <Badge className={`text-xs ${getRiskBadgeColor(trader.risk_level)}`}>
+                      {getRiskLabel(trader.risk_level)}
                     </Badge>
                   </div>
                   
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground">Max DD</div>
-                    <div className="text-sm font-bold text-red-600">{trader.maxDrawdown.toFixed(1)}%</div>
+                    <div className="text-sm font-bold text-red-600">{trader.max_drawdown.toFixed(1)}%</div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTrader(trader)}>
-                        View Profile
-                      </Button>
-                    </DialogTrigger>
-                  </Dialog>
-                  
-                  <Button
-                    variant={trader.isFollowing ? "secondary" : "outline"}
-                    size="sm"
-                    onClick={() => handleFollow(trader.id)}
-                  >
-                    {trader.isFollowing ? 'Following' : 'Follow'}
+                  <Button variant="outline" size="sm" onClick={() => setSelectedTrader(trader)}>
+                    View Profile
                   </Button>
                   
                   <Button
-                    variant={trader.isCopying ? "destructive" : "default"}
+                    variant="default"
                     size="sm"
-                    onClick={() => handleCopy(trader.id)}
+                    onClick={() => setCopyDialogTrader(trader)}
+                    className="bg-green-600 hover:bg-green-700"
                   >
-                    {trader.isCopying ? 'Stop Copy' : 'Copy'}
+                    Copy Trader
                   </Button>
                 </div>
               </div>
@@ -289,14 +183,32 @@ export const TraderLeaderboard: React.FC = () => {
         ))}
       </div>
 
+      {sortedTraders.length === 0 && (
+        <div className="text-center py-12">
+          <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            {searchTerm ? 'No traders found matching your search' : 'No copy traders available'}
+          </p>
+        </div>
+      )}
+
       {/* Trader Profile Dialog */}
       {selectedTrader && (
         <TraderProfileDialog
           trader={selectedTrader}
           isOpen={!!selectedTrader}
           onClose={() => setSelectedTrader(null)}
-          onFollow={() => handleFollow(selectedTrader.id)}
-          onCopy={() => handleCopy(selectedTrader.id)}
+          onFollow={() => {}}
+          onCopy={() => setCopyDialogTrader(selectedTrader)}
+        />
+      )}
+
+      {/* Copy Amount Dialog */}
+      {copyDialogTrader && (
+        <CopyAmountDialog
+          trader={copyDialogTrader}
+          isOpen={!!copyDialogTrader}
+          onClose={() => setCopyDialogTrader(null)}
         />
       )}
     </div>
