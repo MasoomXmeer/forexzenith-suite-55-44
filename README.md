@@ -95,8 +95,6 @@ The platform is fully responsive and includes:
 
 ## 🚀 Deployment
 
-### Deploy to Lovable
-Open the repository in [Lovable](https://lovable.dev/projects/59a20f72-22c8-44cc-81d2-273be84ce417) and click on Share → Publish.
 
 ### Deploy to Other Platforms
 The project can be deployed to any static hosting service:
@@ -139,17 +137,11 @@ This project is proprietary software. All rights reserved.
 
 For support, email support@aoneprimefx.com or create a support ticket in the platform.
 
-## Project Info
-
-**Lovable URL**: https://lovable.dev/projects/59a20f72-22c8-44cc-81d2-273be84ce417
+## 
 
 ## How can I edit this code?
 
 There are several ways of editing your application:
-
-**Use Lovable**
-Simply visit the [Lovable Project](https://lovable.dev/projects/59a20f72-22c8-44cc-81d2-273be84ce417) and start prompting.
-
 **Use your preferred IDE**
 Clone this repo and push changes. The only requirement is having Node.js & npm installed.
 
